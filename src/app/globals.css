@@ -123,14 +123,21 @@
   }
   body {
     @apply bg-background text-foreground text-[15px] leading-relaxed;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
   html {
     @apply font-sans;
   }
   h1 {
-    @apply tracking-tight;
+    @apply tracking-tight font-semibold;
   }
   h2, h3 {
-    @apply tracking-tight;
+    @apply tracking-tight font-semibold;
+  }
+  h4, h5, h6 {
+    @apply tracking-normal font-medium;
+  }
+  p {
+    @apply leading-relaxed;
   }
 }

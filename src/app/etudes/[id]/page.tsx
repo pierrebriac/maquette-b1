@@ -449,8 +449,8 @@ export default function StudyDetailPage() {
         <div className="flex gap-2">
           <Link href={`/etudes/${study.id}/simuler`}>
             <Button variant="outline">
-              <Play className="mr-2 h-4 w-4" />
-              Simuler
+              <Eye className="mr-2 h-4 w-4" />
+              Vue participant
             </Button>
           </Link>
           <Button variant="outline" onClick={handleExportProtocol}>
