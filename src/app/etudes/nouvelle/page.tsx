@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveStudy } from '@/lib/store';
 import { Study } from '@/lib/types';
+import { createDefaultRecruitmentModule } from '@/lib/recruitment-defaults';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,7 +56,7 @@ export default function NouvelleEtudePage() {
       protocol: {
         id: uuidv4(),
         version: '1.0',
-        modules: [],
+        modules: [createDefaultRecruitmentModule()],
       },
     };
     saveStudy(study);

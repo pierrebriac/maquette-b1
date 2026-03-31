@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudy, saveStudy, deleteStudy } from '@/lib/store';
 import { Study, StudyStatus, STATUS_LABELS, QUESTION_TYPE_LABELS, Module, Question, EligibilityEffect, EligibilityRule, NumericEligibilityRange } from '@/lib/types';
@@ -21,9 +21,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  ArrowLeft, Save, Trash2, Play, Download, Upload, Plus, X, Check,
+  ArrowLeft, Trash2, Download, Upload, Plus, X, Check,
   GripVertical, Mic, Video, MessageSquare, ListChecks, Type, Hash,
-  BarChart3, Eye, FileText, Link2, Users, ChevronDown, ChevronUp,
+  BarChart3, Eye, FileText, Link2, ChevronDown, ChevronUp,
   Library, Search,
 } from 'lucide-react';
 import {
@@ -61,6 +61,109 @@ const questionTypeIcons: Record<string, React.ReactNode> = {
   ia: <MessageSquare className="h-4 w-4" />,
   video_visionnage: <Eye className="h-4 w-4" />,
 };
+
+function cloneEligibility(
+  eligibility?: Question['eligibility']
+): Question['eligibility'] | undefined {
+  if (!eligibility) return undefined;
+  return {
+    ...eligibility,
+    rules: eligibility.rules.map((rule) => ({ ...rule })),
+    numericRange: eligibility.numericRange
+      ? { ...eligibility.numericRange }
+      : undefined,
+  };
+}
+
+function buildOptionEligibilityRules(
+  options: string[],
+  eligibility?: Question['eligibility']
+): EligibilityRule[] {
+  return options.map((option) => ({
+    answer: option,
+    effect:
+      eligibility?.rules.find((rule) => rule.answer === option)?.effect ?? 'neutral',
+  }));
+}
+
+function buildQuestionFromFields(
+  fields: Pick<
+    Question,
+    'type' | 'label' | 'consigne' | 'required' | 'options' | 'eligibility'
+  >,
+  id: string,
+  order: number
+): Question {
+  return {
+    id,
+    type: fields.type,
+    label: fields.label,
+    consigne: { ...fields.consigne },
+    required: fields.required,
+    options: fields.options ? [...fields.options] : undefined,
+    order,
+    eligibility: cloneEligibility(fields.eligibility),
+  };
+}
+
+function getQuestionWithType(question: Question, nextType: Question['type']): Question {
+  if (nextType === 'nombre') {
+    return {
+      ...question,
+      type: nextType,
+      options: undefined,
+      eligibility: question.eligibility?.numericRange
+        ? {
+            enabled: question.eligibility.enabled,
+            rules: [],
+            numericRange: { ...question.eligibility.numericRange },
+          }
+        : undefined,
+    };
+  }
+
+  if (nextType === 'qcm' || nextType === 'likert') {
+    const options = question.options?.length ? question.options : ['Option 1', 'Option 2'];
+    return {
+      ...question,
+      type: nextType,
+      options,
+      eligibility: question.eligibility?.enabled
+        ? {
+            enabled: true,
+            rules: buildOptionEligibilityRules(options, question.eligibility),
+          }
+        : undefined,
+    };
+  }
+
+  return {
+    ...question,
+    type: nextType,
+    options: undefined,
+    eligibility: undefined,
+  };
+}
+
+function getQuestionWithOptions(question: Question, options: string[]): Question {
+  const nextOptions = options.map((option) => option.trim()).filter(Boolean);
+  return {
+    ...question,
+    options: nextOptions,
+    eligibility: question.eligibility?.enabled
+      ? {
+          enabled: true,
+          rules: buildOptionEligibilityRules(nextOptions, question.eligibility),
+        }
+      : undefined,
+  };
+}
+
+function formatNumericEligibilityRange(range?: NumericEligibilityRange) {
+  const min = range?.min != null ? range.min : '−∞';
+  const max = range?.max != null ? range.max : '+∞';
+  return `${min} → ${max}`;
+}
 
 function SortableModuleItem({
   module: mod,
@@ -180,7 +283,7 @@ function SortableQuestionItem({
               {(Object.keys(QUESTION_TYPE_LABELS) as Array<keyof typeof QUESTION_TYPE_LABELS>).map((t) => (
                 <button
                   key={t}
-                  onClick={() => onUpdate({ ...question, type: t })}
+                  onClick={() => onUpdate(getQuestionWithType(question, t))}
                   className={`flex flex-col items-center gap-1 rounded-md border p-2 text-xs transition-colors ${
                     question.type === t
                       ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
@@ -201,10 +304,9 @@ function SortableQuestionItem({
               <Textarea
                 value={(question.options || []).join('\n')}
                 onChange={(e) =>
-                  onUpdate({
-                    ...question,
-                    options: e.target.value.split('\n').filter(Boolean),
-                  })
+                  onUpdate(
+                    getQuestionWithOptions(question, e.target.value.split('\n'))
+                  )
                 }
                 rows={3}
                 placeholder="Option 1&#10;Option 2&#10;Option 3"
@@ -220,7 +322,10 @@ function SortableQuestionItem({
             />
             <Label className="text-xs">Obligatoire</Label>
           </div>
-          {((question.type === 'qcm' || question.type === 'likert') && question.options && question.options.length > 0 || question.type === 'nombre') && (
+          {((((question.type === 'qcm' || question.type === 'likert') &&
+            question.options &&
+            question.options.length > 0) ||
+            question.type === 'nombre')) && (
             <div className="space-y-2 rounded-lg border border-dashed p-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -233,17 +338,23 @@ function SortableQuestionItem({
                           eligibility: {
                             enabled: checked,
                             rules: [],
-                            numericRange: question.eligibility?.numericRange ?? { min: undefined, max: undefined, effect: 'include' },
+                            numericRange: question.eligibility?.numericRange ?? {
+                              min: undefined,
+                              max: undefined,
+                              effect: 'include',
+                            },
                           },
                         });
                       } else {
-                        const rules: EligibilityRule[] = (question.options || []).map((opt) => ({
-                          answer: opt,
-                          effect: (question.eligibility?.rules.find((r) => r.answer === opt)?.effect ?? 'neutral') as EligibilityEffect,
-                        }));
+                        const rules = buildOptionEligibilityRules(
+                          question.options || [],
+                          question.eligibility
+                        );
                         onUpdate({
                           ...question,
-                          eligibility: { enabled: checked, rules },
+                          eligibility: checked
+                            ? { enabled: true, rules }
+                            : undefined,
                         });
                       }
                     }}
@@ -264,7 +375,7 @@ function SortableQuestionItem({
                         placeholder="—"
                         value={question.eligibility.numericRange?.min ?? ''}
                         onChange={(e) => {
-                          const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                          const val = e.target.value === '' ? undefined : Number(e.target.value);
                           onUpdate({
                             ...question,
                             eligibility: {
@@ -286,7 +397,7 @@ function SortableQuestionItem({
                         placeholder="—"
                         value={question.eligibility.numericRange?.max ?? ''}
                         onChange={(e) => {
-                          const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                          const val = e.target.value === '' ? undefined : Number(e.target.value);
                           onUpdate({
                             ...question,
                             eligibility: {
@@ -304,9 +415,7 @@ function SortableQuestionItem({
                   </div>
                   {(question.eligibility.numericRange?.min != null || question.eligibility.numericRange?.max != null) && (
                     <div className="rounded-md bg-green-50 border border-green-200 px-3 py-1.5 text-xs text-green-700">
-                      Incluant : {question.eligibility.numericRange?.min != null ? question.eligibility.numericRange.min : '−∞'}
-                      {' → '}
-                      {question.eligibility.numericRange?.max != null ? question.eligibility.numericRange.max : '+∞'}
+                      Incluant : {formatNumericEligibilityRange(question.eligibility.numericRange)}
                     </div>
                   )}
                   {(question.eligibility.numericRange?.min != null || question.eligibility.numericRange?.max != null) && (
@@ -316,7 +425,8 @@ function SortableQuestionItem({
                   )}
                 </div>
               )}
-              {question.eligibility?.enabled && question.type !== 'nombre' && (
+              {question.eligibility?.enabled &&
+                (question.type === 'qcm' || question.type === 'likert') && (
                 <div className="space-y-1.5">
                   <p className="text-[10px] text-muted-foreground">
                     Cliquez sur chaque réponse pour définir son effet sur l&apos;éligibilité.
@@ -380,7 +490,6 @@ export default function StudyDetailPage() {
   const [libQuestionSearch, setLibQuestionSearch] = useState('');
   const [libQuestionCategory, setLibQuestionCategory] = useState<string | null>(null);
   const [selectedLibQuestions, setSelectedLibQuestions] = useState<Set<string>>(new Set());
-  const [eligibilityPickerOpen, setEligibilityPickerOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -499,11 +608,9 @@ export default function StudyDetailPage() {
       name: libModule.name,
       description: libModule.description,
       order: study!.protocol.modules.length,
-      questions: libModule.questions.map((q, i) => ({
-        ...q,
-        id: uuidv4(),
-        order: i,
-      })),
+      questions: libModule.questions.map((q, i) =>
+        buildQuestionFromFields(q, uuidv4(), i)
+      ),
     };
     const updated = {
       ...study!,
@@ -523,15 +630,9 @@ export default function StudyDetailPage() {
     if (!selectedModuleId) return;
     const mod = study!.protocol.modules.find((m) => m.id === selectedModuleId);
     if (!mod) return;
-    const newQuestions: Question[] = libQuestions.map((lq, i) => ({
-      id: uuidv4(),
-      type: lq.type,
-      label: lq.label,
-      consigne: lq.consigne,
-      required: lq.required,
-      options: lq.options,
-      order: mod.questions.length + i,
-    }));
+    const newQuestions: Question[] = libQuestions.map((lq, i) =>
+      buildQuestionFromFields(lq, uuidv4(), mod.questions.length + i)
+    );
     const updated = {
       ...study!,
       updatedAt: new Date().toISOString(),
@@ -617,7 +718,13 @@ export default function StudyDetailPage() {
   function getEligibilityQuestions(): (Question & { moduleName: string; moduleId: string })[] {
     return study!.protocol.modules.flatMap((m) =>
       m.questions
-        .filter((q) => q.eligibility?.enabled)
+        .filter(
+          (q) =>
+            q.eligibility?.enabled &&
+            (q.type === 'nombre' ||
+              ((q.type === 'qcm' || q.type === 'likert') &&
+                Boolean(q.options?.length)))
+        )
         .map((q) => ({ ...q, moduleName: m.name, moduleId: m.id }))
     );
   }
@@ -1204,7 +1311,7 @@ export default function StudyDetailPage() {
                     ))
                   ) : (
                     <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                      Aucune question QCM / Likert disponible.
+                      Aucune question compatible disponible.
                       <br />Ajoutez des questions au protocole d&apos;abord.
                     </div>
                   )}
@@ -1262,7 +1369,7 @@ export default function StudyDetailPage() {
                                 placeholder="—"
                                 value={q.eligibility.numericRange.min ?? ''}
                                 onChange={(e) => {
-                                  const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
                                   updateNumericRange(q.id, { min: val });
                                 }}
                                 className="h-8 text-xs"
@@ -1275,7 +1382,7 @@ export default function StudyDetailPage() {
                                 placeholder="—"
                                 value={q.eligibility.numericRange.max ?? ''}
                                 onChange={(e) => {
-                                  const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
                                   updateNumericRange(q.id, { max: val });
                                 }}
                                 className="h-8 text-xs"
@@ -1285,9 +1392,7 @@ export default function StudyDetailPage() {
                           {(q.eligibility.numericRange.min != null || q.eligibility.numericRange.max != null) && (
                             <>
                               <div className="rounded-md bg-green-50 border border-green-200 px-3 py-1.5 text-xs text-green-700">
-                                Incluant : {q.eligibility.numericRange.min != null ? q.eligibility.numericRange.min : '−∞'}
-                                {' → '}
-                                {q.eligibility.numericRange.max != null ? q.eligibility.numericRange.max : '+∞'}
+                                Incluant : {formatNumericEligibilityRange(q.eligibility.numericRange)}
                               </div>
                               <div className="rounded-md bg-red-50 border border-red-200 px-3 py-1.5 text-xs text-red-700">
                                 Excluant : hors de cette plage

@@ -1,4 +1,9 @@
 import { Study, TeamMember, CommunityItem, LabSettings } from './types';
+import {
+  DEFAULT_RECRUITMENT_QUESTION_TEMPLATES,
+  PREBUILT_SEX_OPTIONS,
+  materializeQuestionTemplate,
+} from './recruitment-defaults';
 
 export function getSeedStudies(): Study[] {
   return [
@@ -26,24 +31,11 @@ export function getSeedStudies(): Study[] {
             order: 0,
             questions: [
               {
-                id: 'q-1-1-1',
-                type: 'qcm',
-                label: 'Tranche d\'âge',
-                consigne: { type: 'texte', content: 'Veuillez sélectionner votre tranche d\'âge.' },
-                required: true,
-                options: ['18-25 ans', '26-35 ans', '36-45 ans', '46-55 ans', '56-65 ans', '65+ ans'],
-                order: 0,
-                eligibility: {
-                  enabled: true,
-                  rules: [
-                    { answer: '18-25 ans', effect: 'include' },
-                    { answer: '26-35 ans', effect: 'include' },
-                    { answer: '36-45 ans', effect: 'include' },
-                    { answer: '46-55 ans', effect: 'include' },
-                    { answer: '56-65 ans', effect: 'include' },
-                    { answer: '65+ ans', effect: 'exclude' },
-                  ],
-                },
+                ...materializeQuestionTemplate(
+                  DEFAULT_RECRUITMENT_QUESTION_TEMPLATES[0],
+                  'q-1-1-1',
+                  0
+                ),
               },
               {
                 id: 'q-1-1-2',
@@ -60,7 +52,7 @@ export function getSeedStudies(): Study[] {
                 label: 'Sexe',
                 consigne: { type: 'texte', content: 'Quel est votre sexe ?' },
                 required: true,
-                options: ['Homme', 'Femme', 'Non-binaire', 'Préfère ne pas répondre'],
+                options: PREBUILT_SEX_OPTIONS,
                 order: 2,
                 eligibility: {
                   enabled: true,

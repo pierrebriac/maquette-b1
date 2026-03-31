@@ -1,4 +1,8 @@
-import { Module, Question } from './types';
+import { Question } from './types';
+import {
+  DEFAULT_RECRUITMENT_QUESTION_TEMPLATES,
+  PREBUILT_SEX_OPTIONS,
+} from './recruitment-defaults';
 
 export type LibrarySource = 'communaute' | 'labo';
 
@@ -20,6 +24,7 @@ export interface LibraryQuestion {
   consigne: Question['consigne'];
   required: boolean;
   options?: string[];
+  eligibility?: Question['eligibility'];
   source: LibrarySource;
   author: string;
   downloads: number;
@@ -42,19 +47,11 @@ export const LIBRARY_MODULES: LibraryModule[] = [
     category: 'Démographie',
     questions: [
       {
-        type: 'qcm',
-        label: 'Tranche d\'âge',
-        consigne: { type: 'texte', content: 'Veuillez sélectionner votre tranche d\'âge.' },
-        required: true,
-        options: ['18-25 ans', '26-35 ans', '36-45 ans', '46-55 ans', '56-65 ans', '65+ ans'],
+        ...DEFAULT_RECRUITMENT_QUESTION_TEMPLATES[0],
         order: 0,
       },
       {
-        type: 'qcm',
-        label: 'Sexe',
-        consigne: { type: 'texte', content: 'Quel est votre sexe ?' },
-        required: true,
-        options: ['Homme', 'Femme', 'Non-binaire', 'Préfère ne pas répondre'],
+        ...DEFAULT_RECRUITMENT_QUESTION_TEMPLATES[1],
         order: 1,
       },
       {
@@ -220,11 +217,11 @@ export const LIBRARY_QUESTIONS: LibraryQuestion[] = [
   // Démographie
   {
     id: 'lib-q-1',
-    label: 'Tranche d\'âge',
-    type: 'qcm',
-    consigne: { type: 'texte', content: 'Veuillez sélectionner votre tranche d\'âge.' },
-    required: true,
-    options: ['18-25 ans', '26-35 ans', '36-45 ans', '46-55 ans', '56-65 ans', '65+ ans'],
+    label: DEFAULT_RECRUITMENT_QUESTION_TEMPLATES[0].label,
+    type: DEFAULT_RECRUITMENT_QUESTION_TEMPLATES[0].type,
+    consigne: DEFAULT_RECRUITMENT_QUESTION_TEMPLATES[0].consigne,
+    required: DEFAULT_RECRUITMENT_QUESTION_TEMPLATES[0].required,
+    eligibility: DEFAULT_RECRUITMENT_QUESTION_TEMPLATES[0].eligibility,
     source: 'communaute',
     author: 'Dr. Marie Dupont',
     downloads: 2104,
@@ -236,7 +233,8 @@ export const LIBRARY_QUESTIONS: LibraryQuestion[] = [
     type: 'qcm',
     consigne: { type: 'texte', content: 'Quel est votre sexe ?' },
     required: true,
-    options: ['Homme', 'Femme', 'Non-binaire', 'Préfère ne pas répondre'],
+    options: PREBUILT_SEX_OPTIONS,
+    eligibility: DEFAULT_RECRUITMENT_QUESTION_TEMPLATES[1].eligibility,
     source: 'communaute',
     author: 'Dr. Marie Dupont',
     downloads: 2089,

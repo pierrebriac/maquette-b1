@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudy } from '@/lib/store';
 import { Study, Question } from '@/lib/types';
@@ -33,8 +33,6 @@ const BORDER2 = '#EAE5DE';  // inner / light divider
 
 const BADGE_LOCKED = '#EAE5DE';   // locked number bg
 const BADGE_NUM    = '#3D3830';   // available number bg
-const BADGE_GRN    = '#2D6B50';   // actually not used separately
-
 const css = `
   @keyframes fadeUp   { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
   @keyframes popIn    { 0%{opacity:0;transform:scale(.93)} 100%{opacity:1;transform:scale(1)} }
@@ -326,13 +324,12 @@ function ModulesView({ study, modules, completedModules, answers, isModuleUnlock
 }
 
 /* ── Question page ────────────────────────────────────────────── */
-function QuestionView({ currentModule, currentQuestion, currentQuestionIdx, answer, setAnswer, onPrev, onNext, onBackToModules }: {
+function QuestionView({ currentModule, currentQuestion, currentQuestionIdx, answer, setAnswer, onNext, onBackToModules }: {
   currentModule: Study['protocol']['modules'][0];
   currentQuestion: Question;
   currentQuestionIdx: number;
   answer: string;
   setAnswer: (v:string)=>void;
-  onPrev: ()=>void;
   onNext: ()=>void;
   onBackToModules: ()=>void;
 }) {
@@ -465,6 +462,28 @@ function QuestionView({ currentModule, currentQuestion, currentQuestionIdx, answ
                   fontFamily:'inherit',transition:'border-color .15s' }}
                 onFocus={e=>(e.target.style.borderColor=GRN)}
                 onBlur={e=>(e.target.style.borderColor=BORDER)}/>
+            )}
+
+            {/* ── Nombre ── */}
+            {q.type==='nombre' && (
+              <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
+                <div style={{ display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:10,alignItems:'center' }}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Entrez une valeur"
+                    value={answer}
+                    onChange={e=>setAnswer(e.target.value)}
+                    style={{ width:'100%',padding:'12px 14px',borderRadius:8,
+                      background:BG,border:`1.5px solid ${BORDER}`,color:TEXT,
+                      fontSize:14,lineHeight:1.6,outline:'none',boxSizing:'border-box',
+                      fontFamily:'inherit',transition:'border-color .15s' }}
+                    onFocus={e=>(e.target.style.borderColor=GRN)}
+                    onBlur={e=>(e.target.style.borderColor=BORDER)}
+                  />
+                  <span style={{ fontSize:12,fontWeight:600,color:MUTED }}>ans</span>
+                </div>
+              </div>
             )}
 
             {/* ── Audio ── */}
@@ -698,7 +717,6 @@ export default function SimulationPage() {
       setStep(activeModIdx<modules.length-1?'module-complete':'finished');
     }
   }
-  function goPrev() { if(currentQIdx>0) setCurrentQIdx(currentQIdx-1); }
 
   if(step==='consent') return (
     <Shell title={study.name} onExit={handleExit}>
@@ -748,7 +766,7 @@ export default function SimulationPage() {
         currentQuestionIdx={currentQIdx}
         answer={answers[currentQuestion.id]||''}
         setAnswer={v=>setAnswers({...answers,[currentQuestion.id]:v})}
-        onPrev={goPrev} onNext={goNext}
+        onNext={goNext}
         onBackToModules={()=>setStep('modules')}/>
     </Shell>
   );
