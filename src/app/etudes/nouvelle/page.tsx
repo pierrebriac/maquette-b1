@@ -52,6 +52,8 @@ export default function NouvelleEtudePage() {
       consentConfigured,
       recruitmentTarget,
       recruitedCount: 0,
+      inclusionCriteria: [],
+      exclusionCriteria: [],
       protocol: {
         id: uuidv4(),
         version: '1.0',

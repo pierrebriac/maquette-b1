@@ -15,6 +15,18 @@ export function getSeedStudies(): Study[] {
       consentConfigured: true,
       recruitmentTarget: 100,
       recruitedCount: 45,
+      inclusionCriteria: [
+        'Âge entre 18 et 65 ans',
+        'Langue maternelle française',
+        'Diagnostic de dépression majeure (DSM-5) dans les 12 derniers mois',
+        'Accès à un appareil avec microphone',
+      ],
+      exclusionCriteria: [
+        'Troubles neurologiques diagnostiqués',
+        'Pathologie vocale connue (dysphonie, laryngectomie)',
+        'Prise de médicaments affectant la voix',
+        'Incapacité à fournir un consentement éclairé',
+      ],
       protocol: {
         id: 'proto-1',
         version: '1.2',
@@ -144,6 +156,8 @@ export function getSeedStudies(): Study[] {
       consentConfigured: false,
       recruitmentTarget: 50,
       recruitedCount: 0,
+      inclusionCriteria: [],
+      exclusionCriteria: [],
       protocol: {
         id: 'proto-2',
         version: '0.3',
@@ -246,6 +260,16 @@ export function getSeedStudies(): Study[] {
       consentConfigured: true,
       recruitmentTarget: 200,
       recruitedCount: 200,
+      inclusionCriteria: [
+        'Âge entre 25 et 55 ans',
+        'Employé(e) à temps plein depuis au moins 6 mois',
+        'Score PSS-10 ≥ 20 (stress perçu modéré à élevé)',
+      ],
+      exclusionCriteria: [
+        'Congé maladie en cours',
+        'Suivi psychiatrique actif',
+        'Grossesse',
+      ],
       protocol: {
         id: 'proto-3',
         version: '2.0',

@@ -15,7 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import {
-  ArrowLeft, Save, Trash2, Play, Download, Upload, Plus, X,
+  ArrowLeft, Save, Trash2, Play, Download, Upload, Plus, X, Check,
   GripVertical, Mic, Video, MessageSquare, ListChecks, Type,
   BarChart3, Eye, FileText, Link2, Users, ChevronDown, ChevronUp,
 } from 'lucide-react';
@@ -834,6 +834,110 @@ export default function StudyDetailPage() {
                   }
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Critères d'inclusion */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Check className="h-5 w-5 text-green-600" />
+                Critères d&apos;inclusion
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {study.inclusionCriteria.map((c, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    value={c}
+                    onChange={(e) => {
+                      const updated = [...study.inclusionCriteria];
+                      updated[i] = e.target.value;
+                      persist({ ...study, inclusionCriteria: updated, updatedAt: new Date().toISOString() });
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      const updated = study.inclusionCriteria.filter((_, j) => j !== i);
+                      persist({ ...study, inclusionCriteria: updated, updatedAt: new Date().toISOString() });
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  persist({
+                    ...study,
+                    inclusionCriteria: [...study.inclusionCriteria, ''],
+                    updatedAt: new Date().toISOString(),
+                  })
+                }
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Ajouter un critère d&apos;inclusion
+              </Button>
+              {study.inclusionCriteria.length === 0 && (
+                <p className="text-sm text-muted-foreground">Aucun critère d&apos;inclusion défini.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Critères d'exclusion */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <X className="h-5 w-5 text-red-500" />
+                Critères d&apos;exclusion
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {study.exclusionCriteria.map((c, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    value={c}
+                    onChange={(e) => {
+                      const updated = [...study.exclusionCriteria];
+                      updated[i] = e.target.value;
+                      persist({ ...study, exclusionCriteria: updated, updatedAt: new Date().toISOString() });
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      const updated = study.exclusionCriteria.filter((_, j) => j !== i);
+                      persist({ ...study, exclusionCriteria: updated, updatedAt: new Date().toISOString() });
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  persist({
+                    ...study,
+                    exclusionCriteria: [...study.exclusionCriteria, ''],
+                    updatedAt: new Date().toISOString(),
+                  })
+                }
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Ajouter un critère d&apos;exclusion
+              </Button>
+              {study.exclusionCriteria.length === 0 && (
+                <p className="text-sm text-muted-foreground">Aucun critère d&apos;exclusion défini.</p>
+              )}
             </CardContent>
           </Card>
 

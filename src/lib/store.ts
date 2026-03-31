@@ -37,7 +37,12 @@ export function initializeStore() {
 
 // Studies
 export function getStudies(): Study[] {
-  return safeGet<Study[]>(KEYS.studies) ?? [];
+  const studies = safeGet<Study[]>(KEYS.studies) ?? [];
+  return studies.map((s) => ({
+    ...s,
+    inclusionCriteria: s.inclusionCriteria ?? [],
+    exclusionCriteria: s.exclusionCriteria ?? [],
+  }));
 }
 
 export function getStudy(id: string): Study | undefined {

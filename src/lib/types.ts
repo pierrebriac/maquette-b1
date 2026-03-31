@@ -45,6 +45,8 @@ export interface Study {
   consentConfigured: boolean;
   recruitmentTarget: number;
   recruitedCount: number;
+  inclusionCriteria: string[];
+  exclusionCriteria: string[];
   protocol: Protocol;
 }
 
