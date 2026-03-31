@@ -55,8 +55,6 @@ export default function EtudesPage() {
           consentConfigured: false,
           recruitmentTarget: data.recruitmentTarget || 0,
           recruitedCount: 0,
-          inclusionCriteria: data.inclusionCriteria || [],
-          exclusionCriteria: data.exclusionCriteria || [],
           protocol: data.protocol || {
             id: uuidv4(),
             version: '1.0',

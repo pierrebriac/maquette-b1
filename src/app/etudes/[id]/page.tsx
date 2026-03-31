@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudy, saveStudy, deleteStudy } from '@/lib/store';
-import { Study, StudyStatus, STATUS_LABELS, QUESTION_TYPE_LABELS, Module, Question } from '@/lib/types';
+import { Study, StudyStatus, STATUS_LABELS, QUESTION_TYPE_LABELS, Module, Question, EligibilityEffect, EligibilityRule, NumericEligibilityRange } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   ArrowLeft, Save, Trash2, Play, Download, Upload, Plus, X, Check,
-  GripVertical, Mic, Video, MessageSquare, ListChecks, Type,
+  GripVertical, Mic, Video, MessageSquare, ListChecks, Type, Hash,
   BarChart3, Eye, FileText, Link2, Users, ChevronDown, ChevronUp,
   Library, Search,
 } from 'lucide-react';
@@ -55,6 +55,7 @@ const questionTypeIcons: Record<string, React.ReactNode> = {
   qcm: <ListChecks className="h-4 w-4" />,
   texte: <Type className="h-4 w-4" />,
   likert: <BarChart3 className="h-4 w-4" />,
+  nombre: <Hash className="h-4 w-4" />,
   audio: <Mic className="h-4 w-4" />,
   video: <Video className="h-4 w-4" />,
   ia: <MessageSquare className="h-4 w-4" />,
@@ -219,6 +220,148 @@ function SortableQuestionItem({
             />
             <Label className="text-xs">Obligatoire</Label>
           </div>
+          {((question.type === 'qcm' || question.type === 'likert') && question.options && question.options.length > 0 || question.type === 'nombre') && (
+            <div className="space-y-2 rounded-lg border border-dashed p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={question.eligibility?.enabled ?? false}
+                    onCheckedChange={(checked) => {
+                      if (question.type === 'nombre') {
+                        onUpdate({
+                          ...question,
+                          eligibility: {
+                            enabled: checked,
+                            rules: [],
+                            numericRange: question.eligibility?.numericRange ?? { min: undefined, max: undefined, effect: 'include' },
+                          },
+                        });
+                      } else {
+                        const rules: EligibilityRule[] = (question.options || []).map((opt) => ({
+                          answer: opt,
+                          effect: (question.eligibility?.rules.find((r) => r.answer === opt)?.effect ?? 'neutral') as EligibilityEffect,
+                        }));
+                        onUpdate({
+                          ...question,
+                          eligibility: { enabled: checked, rules },
+                        });
+                      }
+                    }}
+                  />
+                  <Label className="text-xs font-medium">Critère d&apos;éligibilité</Label>
+                </div>
+              </div>
+              {question.eligibility?.enabled && question.type === 'nombre' && (
+                <div className="space-y-2">
+                  <p className="text-[10px] text-muted-foreground">
+                    Définissez la plage de valeurs acceptée. Les réponses hors de cette plage seront excluantes.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-[10px]">Min</Label>
+                      <Input
+                        type="number"
+                        placeholder="—"
+                        value={question.eligibility.numericRange?.min ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                          onUpdate({
+                            ...question,
+                            eligibility: {
+                              ...question.eligibility!,
+                              numericRange: {
+                                ...question.eligibility!.numericRange!,
+                                min: val,
+                              },
+                            },
+                          });
+                        }}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-[10px]">Max</Label>
+                      <Input
+                        type="number"
+                        placeholder="—"
+                        value={question.eligibility.numericRange?.max ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                          onUpdate({
+                            ...question,
+                            eligibility: {
+                              ...question.eligibility!,
+                              numericRange: {
+                                ...question.eligibility!.numericRange!,
+                                max: val,
+                              },
+                            },
+                          });
+                        }}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                  {(question.eligibility.numericRange?.min != null || question.eligibility.numericRange?.max != null) && (
+                    <div className="rounded-md bg-green-50 border border-green-200 px-3 py-1.5 text-xs text-green-700">
+                      Incluant : {question.eligibility.numericRange?.min != null ? question.eligibility.numericRange.min : '−∞'}
+                      {' → '}
+                      {question.eligibility.numericRange?.max != null ? question.eligibility.numericRange.max : '+∞'}
+                    </div>
+                  )}
+                  {(question.eligibility.numericRange?.min != null || question.eligibility.numericRange?.max != null) && (
+                    <div className="rounded-md bg-red-50 border border-red-200 px-3 py-1.5 text-xs text-red-700">
+                      Excluant : hors de cette plage
+                    </div>
+                  )}
+                </div>
+              )}
+              {question.eligibility?.enabled && question.type !== 'nombre' && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-muted-foreground">
+                    Cliquez sur chaque réponse pour définir son effet sur l&apos;éligibilité.
+                  </p>
+                  {(question.options || []).map((opt) => {
+                    const rule = question.eligibility?.rules.find((r) => r.answer === opt);
+                    const effect = rule?.effect ?? 'neutral';
+                    const nextEffect: Record<EligibilityEffect, EligibilityEffect> = {
+                      neutral: 'include',
+                      include: 'exclude',
+                      exclude: 'neutral',
+                    };
+                    const effectStyles: Record<EligibilityEffect, string> = {
+                      neutral: 'bg-muted text-muted-foreground',
+                      include: 'bg-green-100 text-green-700 border-green-300',
+                      exclude: 'bg-red-100 text-red-700 border-red-300',
+                    };
+                    const effectLabels: Record<EligibilityEffect, string> = {
+                      neutral: 'Neutre',
+                      include: 'Incluant',
+                      exclude: 'Excluant',
+                    };
+                    return (
+                      <button
+                        key={opt}
+                        onClick={() => {
+                          const newRules = (question.eligibility?.rules || []).map((r) =>
+                            r.answer === opt ? { ...r, effect: nextEffect[r.effect] } : r
+                          );
+                          onUpdate({
+                            ...question,
+                            eligibility: { ...question.eligibility!, rules: newRules },
+                          });
+                        }}
+                        className={`flex w-full items-center justify-between rounded-md border px-3 py-1.5 text-xs transition-colors ${effectStyles[effect]}`}
+                      >
+                        <span>{opt}</span>
+                        <span className="font-medium">{effectLabels[effect]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -237,6 +380,7 @@ export default function StudyDetailPage() {
   const [libQuestionSearch, setLibQuestionSearch] = useState('');
   const [libQuestionCategory, setLibQuestionCategory] = useState<string | null>(null);
   const [selectedLibQuestions, setSelectedLibQuestions] = useState<Set<string>>(new Set());
+  const [eligibilityPickerOpen, setEligibilityPickerOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -404,6 +548,92 @@ export default function StudyDetailPage() {
     setQuestionLibraryOpen(false);
     setSelectedLibQuestions(new Set());
     toast.success(`${newQuestions.length} question${newQuestions.length > 1 ? 's' : ''} ajoutée${newQuestions.length > 1 ? 's' : ''}`);
+  }
+
+  // Helper to find which module contains a question
+  function findModuleForQuestion(questionId: string): Module | undefined {
+    return study!.protocol.modules.find((m) => m.questions.some((q) => q.id === questionId));
+  }
+
+  // Enable eligibility on a question by ID (from recruitment tab)
+  function enableEligibilityOnQuestion(questionId: string) {
+    const mod = findModuleForQuestion(questionId);
+    if (!mod) return;
+    const q = mod.questions.find((qq) => qq.id === questionId);
+    if (!q) return;
+    if (q.type === 'nombre') {
+      updateQuestion(mod.id, {
+        ...q,
+        eligibility: { enabled: true, rules: [], numericRange: { min: undefined, max: undefined, effect: 'include' } },
+      });
+    } else {
+      if (!q.options) return;
+      const rules: EligibilityRule[] = q.options.map((opt) => ({
+        answer: opt,
+        effect: 'neutral' as EligibilityEffect,
+      }));
+      updateQuestion(mod.id, { ...q, eligibility: { enabled: true, rules } });
+    }
+    toast.success(`"${q.label}" ajoutée comme critère d'éligibilité`);
+  }
+
+  // Update eligibility rule for a specific question from recruitment tab
+  function updateEligibilityRule(questionId: string, answer: string, newEffect: EligibilityEffect) {
+    const mod = findModuleForQuestion(questionId);
+    if (!mod) return;
+    const q = mod.questions.find((qq) => qq.id === questionId);
+    if (!q || !q.eligibility) return;
+    const newRules = q.eligibility.rules.map((r) =>
+      r.answer === answer ? { ...r, effect: newEffect } : r
+    );
+    updateQuestion(mod.id, { ...q, eligibility: { ...q.eligibility, rules: newRules } });
+  }
+
+  // Update numeric range for a question from recruitment tab
+  function updateNumericRange(questionId: string, range: Partial<NumericEligibilityRange>) {
+    const mod = findModuleForQuestion(questionId);
+    if (!mod) return;
+    const q = mod.questions.find((qq) => qq.id === questionId);
+    if (!q || !q.eligibility) return;
+    updateQuestion(mod.id, {
+      ...q,
+      eligibility: {
+        ...q.eligibility,
+        numericRange: { ...q.eligibility.numericRange!, ...range },
+      },
+    });
+  }
+
+  // Remove eligibility from a question
+  function removeEligibility(questionId: string) {
+    const mod = findModuleForQuestion(questionId);
+    if (!mod) return;
+    const q = mod.questions.find((qq) => qq.id === questionId);
+    if (!q) return;
+    updateQuestion(mod.id, { ...q, eligibility: { enabled: false, rules: [] } });
+  }
+
+  // Get all questions with eligibility enabled
+  function getEligibilityQuestions(): (Question & { moduleName: string; moduleId: string })[] {
+    return study!.protocol.modules.flatMap((m) =>
+      m.questions
+        .filter((q) => q.eligibility?.enabled)
+        .map((q) => ({ ...q, moduleName: m.name, moduleId: m.id }))
+    );
+  }
+
+  // Get all eligible question types that are NOT yet eligibility criteria
+  function getAvailableEligibilityQuestions(): (Question & { moduleName: string })[] {
+    return study!.protocol.modules.flatMap((m) =>
+      m.questions
+        .filter((q) => {
+          if (q.eligibility?.enabled) return false;
+          if (q.type === 'nombre') return true;
+          if ((q.type === 'qcm' || q.type === 'likert') && q.options && q.options.length > 0) return true;
+          return false;
+        })
+        .map((q) => ({ ...q, moduleName: m.name }))
+    );
   }
 
   function updateQuestion(moduleId: string, question: Question) {
@@ -948,106 +1178,140 @@ export default function StudyDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Critères d'inclusion */}
+          {/* Critères d'éligibilité basés sur le protocole */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Check className="h-5 w-5 text-green-600" />
-                Critères d&apos;inclusion
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Critères d&apos;éligibilité</CardTitle>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button size="sm" variant="outline">
+                      <Plus className="h-3 w-3 mr-1" />
+                      Ajouter
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="end" className="w-72">
+                  {getAvailableEligibilityQuestions().length > 0 ? (
+                    getAvailableEligibilityQuestions().map((q) => (
+                      <DropdownMenuItem key={q.id} onClick={() => enableEligibilityOnQuestion(q.id)}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{q.label}</p>
+                          <p className="text-[10px] text-muted-foreground">{q.moduleName} · {QUESTION_TYPE_LABELS[q.type]}</p>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                      Aucune question QCM / Likert disponible.
+                      <br />Ajoutez des questions au protocole d&apos;abord.
+                    </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {study.inclusionCriteria.map((c, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input
-                    value={c}
-                    onChange={(e) => {
-                      const updated = [...study.inclusionCriteria];
-                      updated[i] = e.target.value;
-                      persist({ ...study, inclusionCriteria: updated, updatedAt: new Date().toISOString() });
-                    }}
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      const updated = study.inclusionCriteria.filter((_, j) => j !== i);
-                      persist({ ...study, inclusionCriteria: updated, updatedAt: new Date().toISOString() });
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  persist({
-                    ...study,
-                    inclusionCriteria: [...study.inclusionCriteria, ''],
-                    updatedAt: new Date().toISOString(),
-                  })
-                }
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter un critère d&apos;inclusion
-              </Button>
-              {study.inclusionCriteria.length === 0 && (
-                <p className="text-sm text-muted-foreground">Aucun critère d&apos;inclusion défini.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Critères d'exclusion */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <X className="h-5 w-5 text-red-500" />
-                Critères d&apos;exclusion
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {study.exclusionCriteria.map((c, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input
-                    value={c}
-                    onChange={(e) => {
-                      const updated = [...study.exclusionCriteria];
-                      updated[i] = e.target.value;
-                      persist({ ...study, exclusionCriteria: updated, updatedAt: new Date().toISOString() });
-                    }}
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      const updated = study.exclusionCriteria.filter((_, j) => j !== i);
-                      persist({ ...study, exclusionCriteria: updated, updatedAt: new Date().toISOString() });
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  persist({
-                    ...study,
-                    exclusionCriteria: [...study.exclusionCriteria, ''],
-                    updatedAt: new Date().toISOString(),
-                  })
-                }
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter un critère d&apos;exclusion
-              </Button>
-              {study.exclusionCriteria.length === 0 && (
-                <p className="text-sm text-muted-foreground">Aucun critère d&apos;exclusion défini.</p>
+            <CardContent className="space-y-4">
+              {getEligibilityQuestions().length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Aucun critère d&apos;éligibilité défini. Utilisez le bouton &quot;Ajouter&quot; pour sélectionner
+                  une question du protocole comme critère, ou activez-le directement dans l&apos;onglet Protocole.
+                </p>
+              ) : (
+                getEligibilityQuestions().map((q) => {
+                  const effectStyles: Record<EligibilityEffect, string> = {
+                    neutral: 'bg-muted text-muted-foreground',
+                    include: 'bg-green-100 text-green-700 border-green-300',
+                    exclude: 'bg-red-100 text-red-700 border-red-300',
+                  };
+                  const effectLabels: Record<EligibilityEffect, string> = {
+                    neutral: 'Neutre',
+                    include: 'Incluant',
+                    exclude: 'Excluant',
+                  };
+                  const nextEffect: Record<EligibilityEffect, EligibilityEffect> = {
+                    neutral: 'include',
+                    include: 'exclude',
+                    exclude: 'neutral',
+                  };
+                  return (
+                    <div key={q.id} className="rounded-lg border p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">{q.label}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {q.moduleName} · {QUESTION_TYPE_LABELS[q.type]}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeEligibility(q.id)}
+                          title="Retirer ce critère"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {q.type === 'nombre' && q.eligibility?.numericRange ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 space-y-1">
+                              <Label className="text-[10px]">Min</Label>
+                              <Input
+                                type="number"
+                                placeholder="—"
+                                value={q.eligibility.numericRange.min ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                  updateNumericRange(q.id, { min: val });
+                                }}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <Label className="text-[10px]">Max</Label>
+                              <Input
+                                type="number"
+                                placeholder="—"
+                                value={q.eligibility.numericRange.max ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                  updateNumericRange(q.id, { max: val });
+                                }}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+                          {(q.eligibility.numericRange.min != null || q.eligibility.numericRange.max != null) && (
+                            <>
+                              <div className="rounded-md bg-green-50 border border-green-200 px-3 py-1.5 text-xs text-green-700">
+                                Incluant : {q.eligibility.numericRange.min != null ? q.eligibility.numericRange.min : '−∞'}
+                                {' → '}
+                                {q.eligibility.numericRange.max != null ? q.eligibility.numericRange.max : '+∞'}
+                              </div>
+                              <div className="rounded-md bg-red-50 border border-red-200 px-3 py-1.5 text-xs text-red-700">
+                                Excluant : hors de cette plage
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {q.eligibility?.rules.map((rule) => (
+                            <button
+                              key={rule.answer}
+                              onClick={() => updateEligibilityRule(q.id, rule.answer, nextEffect[rule.effect])}
+                              className={`flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs transition-colors ${effectStyles[rule.effect]}`}
+                            >
+                              <span className="truncate mr-1">{rule.answer}</span>
+                              <span className="font-medium shrink-0">{effectLabels[rule.effect]}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </CardContent>
           </Card>

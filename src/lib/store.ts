@@ -40,8 +40,6 @@ export function getStudies(): Study[] {
   const studies = safeGet<Study[]>(KEYS.studies) ?? [];
   return studies.map((s) => ({
     ...s,
-    inclusionCriteria: s.inclusionCriteria ?? [],
-    exclusionCriteria: s.exclusionCriteria ?? [],
   }));
 }
 

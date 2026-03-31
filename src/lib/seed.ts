@@ -15,18 +15,6 @@ export function getSeedStudies(): Study[] {
       consentConfigured: true,
       recruitmentTarget: 100,
       recruitedCount: 45,
-      inclusionCriteria: [
-        'Âge entre 18 et 65 ans',
-        'Langue maternelle française',
-        'Diagnostic de dépression majeure (DSM-5) dans les 12 derniers mois',
-        'Accès à un appareil avec microphone',
-      ],
-      exclusionCriteria: [
-        'Troubles neurologiques diagnostiqués',
-        'Pathologie vocale connue (dysphonie, laryngectomie)',
-        'Prise de médicaments affectant la voix',
-        'Incapacité à fournir un consentement éclairé',
-      ],
       protocol: {
         id: 'proto-1',
         version: '1.2',
@@ -45,6 +33,17 @@ export function getSeedStudies(): Study[] {
                 required: true,
                 options: ['18-25 ans', '26-35 ans', '36-45 ans', '46-55 ans', '56-65 ans', '65+ ans'],
                 order: 0,
+                eligibility: {
+                  enabled: true,
+                  rules: [
+                    { answer: '18-25 ans', effect: 'include' },
+                    { answer: '26-35 ans', effect: 'include' },
+                    { answer: '36-45 ans', effect: 'include' },
+                    { answer: '46-55 ans', effect: 'include' },
+                    { answer: '56-65 ans', effect: 'include' },
+                    { answer: '65+ ans', effect: 'exclude' },
+                  ],
+                },
               },
               {
                 id: 'q-1-1-2',
@@ -63,6 +62,15 @@ export function getSeedStudies(): Study[] {
                 required: true,
                 options: ['Homme', 'Femme', 'Non-binaire', 'Préfère ne pas répondre'],
                 order: 2,
+                eligibility: {
+                  enabled: true,
+                  rules: [
+                    { answer: 'Homme', effect: 'include' },
+                    { answer: 'Femme', effect: 'include' },
+                    { answer: 'Non-binaire', effect: 'include' },
+                    { answer: 'Préfère ne pas répondre', effect: 'exclude' },
+                  ],
+                },
               },
             ],
           },
@@ -156,8 +164,6 @@ export function getSeedStudies(): Study[] {
       consentConfigured: false,
       recruitmentTarget: 50,
       recruitedCount: 0,
-      inclusionCriteria: [],
-      exclusionCriteria: [],
       protocol: {
         id: 'proto-2',
         version: '0.3',
@@ -260,16 +266,6 @@ export function getSeedStudies(): Study[] {
       consentConfigured: true,
       recruitmentTarget: 200,
       recruitedCount: 200,
-      inclusionCriteria: [
-        'Âge entre 25 et 55 ans',
-        'Employé(e) à temps plein depuis au moins 6 mois',
-        'Score PSS-10 ≥ 20 (stress perçu modéré à élevé)',
-      ],
-      exclusionCriteria: [
-        'Congé maladie en cours',
-        'Suivi psychiatrique actif',
-        'Grossesse',
-      ],
       protocol: {
         id: 'proto-3',
         version: '2.0',

@@ -1,12 +1,31 @@
 export type StudyStatus = 'brouillon' | 'publiee' | 'terminee';
 
-export type QuestionType = 'qcm' | 'texte' | 'likert' | 'audio' | 'video' | 'ia' | 'video_visionnage';
+export type QuestionType = 'qcm' | 'texte' | 'likert' | 'nombre' | 'audio' | 'video' | 'ia' | 'video_visionnage';
 
 export type ConsigneType = 'texte' | 'audio' | 'image' | 'video' | 'mixte';
 
 export interface Consigne {
   type: ConsigneType;
   content: string;
+}
+
+export type EligibilityEffect = 'include' | 'exclude' | 'neutral';
+
+export interface EligibilityRule {
+  answer: string;
+  effect: EligibilityEffect;
+}
+
+export interface NumericEligibilityRange {
+  min?: number;
+  max?: number;
+  effect: 'include' | 'exclude';
+}
+
+export interface Eligibility {
+  enabled: boolean;
+  rules: EligibilityRule[];          // for QCM / Likert
+  numericRange?: NumericEligibilityRange; // for nombre
 }
 
 export interface Question {
@@ -17,6 +36,7 @@ export interface Question {
   required: boolean;
   options?: string[];
   order: number;
+  eligibility?: Eligibility;
 }
 
 export interface Module {
@@ -45,8 +65,6 @@ export interface Study {
   consentConfigured: boolean;
   recruitmentTarget: number;
   recruitedCount: number;
-  inclusionCriteria: string[];
-  exclusionCriteria: string[];
   protocol: Protocol;
 }
 
@@ -79,6 +97,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   qcm: 'QCM',
   texte: 'Texte libre',
   likert: 'Échelle de Likert',
+  nombre: 'Nombre',
   audio: 'Enregistrement audio',
   video: 'Enregistrement vidéo',
   ia: 'Conversation IA',
