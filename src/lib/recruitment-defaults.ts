@@ -11,7 +11,6 @@ export interface ModuleTemplate extends Omit<Module, 'id' | 'questions'> {
 export const PREBUILT_SEX_OPTIONS = [
   'Homme',
   'Femme',
-  'Non-binaire',
   'Préfère ne pas répondre',
 ];
 

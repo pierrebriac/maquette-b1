@@ -59,7 +59,6 @@ export function getSeedStudies(): Study[] {
                   rules: [
                     { answer: 'Homme', effect: 'include' },
                     { answer: 'Femme', effect: 'include' },
-                    { answer: 'Non-binaire', effect: 'include' },
                     { answer: 'Préfère ne pas répondre', effect: 'exclude' },
                   ],
                 },
