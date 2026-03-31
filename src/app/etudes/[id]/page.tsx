@@ -15,10 +15,21 @@ import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import {
   ArrowLeft, Save, Trash2, Play, Download, Upload, Plus, X, Check,
   GripVertical, Mic, Video, MessageSquare, ListChecks, Type,
   BarChart3, Eye, FileText, Link2, Users, ChevronDown, ChevronUp,
+  Library, Search,
 } from 'lucide-react';
+import {
+  LIBRARY_MODULES, LIBRARY_QUESTIONS, MODULE_CATEGORIES, QUESTION_CATEGORIES,
+  SOURCE_LABELS, LibraryModule, LibraryQuestion,
+} from '@/lib/library';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import Link from 'next/link';
@@ -219,6 +230,13 @@ export default function StudyDetailPage() {
   const router = useRouter();
   const [study, setStudy] = useState<Study | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+  const [moduleLibraryOpen, setModuleLibraryOpen] = useState(false);
+  const [questionLibraryOpen, setQuestionLibraryOpen] = useState(false);
+  const [libModuleSearch, setLibModuleSearch] = useState('');
+  const [libModuleCategory, setLibModuleCategory] = useState<string | null>(null);
+  const [libQuestionSearch, setLibQuestionSearch] = useState('');
+  const [libQuestionCategory, setLibQuestionCategory] = useState<string | null>(null);
+  const [selectedLibQuestions, setSelectedLibQuestions] = useState<Set<string>>(new Set());
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -329,6 +347,63 @@ export default function StudyDetailPage() {
       },
     };
     persist(updated);
+  }
+
+  function addLibraryModule(libModule: LibraryModule) {
+    const newModule: Module = {
+      id: uuidv4(),
+      name: libModule.name,
+      description: libModule.description,
+      order: study!.protocol.modules.length,
+      questions: libModule.questions.map((q, i) => ({
+        ...q,
+        id: uuidv4(),
+        order: i,
+      })),
+    };
+    const updated = {
+      ...study!,
+      updatedAt: new Date().toISOString(),
+      protocol: {
+        ...study!.protocol,
+        modules: [...study!.protocol.modules, newModule],
+      },
+    };
+    persist(updated);
+    setSelectedModuleId(newModule.id);
+    setModuleLibraryOpen(false);
+    toast.success(`Module "${libModule.name}" ajouté`);
+  }
+
+  function addLibraryQuestions(libQuestions: LibraryQuestion[]) {
+    if (!selectedModuleId) return;
+    const mod = study!.protocol.modules.find((m) => m.id === selectedModuleId);
+    if (!mod) return;
+    const newQuestions: Question[] = libQuestions.map((lq, i) => ({
+      id: uuidv4(),
+      type: lq.type,
+      label: lq.label,
+      consigne: lq.consigne,
+      required: lq.required,
+      options: lq.options,
+      order: mod.questions.length + i,
+    }));
+    const updated = {
+      ...study!,
+      updatedAt: new Date().toISOString(),
+      protocol: {
+        ...study!.protocol,
+        modules: study!.protocol.modules.map((m) =>
+          m.id === selectedModuleId
+            ? { ...m, questions: [...m.questions, ...newQuestions] }
+            : m
+        ),
+      },
+    };
+    persist(updated);
+    setQuestionLibraryOpen(false);
+    setSelectedLibQuestions(new Set());
+    toast.success(`${newQuestions.length} question${newQuestions.length > 1 ? 's' : ''} ajoutée${newQuestions.length > 1 ? 's' : ''}`);
   }
 
   function updateQuestion(moduleId: string, question: Question) {
@@ -564,10 +639,28 @@ export default function StudyDetailPage() {
             <div className="w-72 shrink-0 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Modules</h3>
-                <Button size="sm" variant="outline" onClick={addModule}>
-                  <Plus className="h-3 w-3 mr-1" />
-                  Ajouter
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button size="sm" variant="outline">
+                        <Plus className="h-3 w-3 mr-1" />
+                        Ajouter
+                        <ChevronDown className="h-3 w-3 ml-1" />
+                      </Button>
+                    }
+                  />
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={addModule}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Module vierge
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setModuleLibraryOpen(true)}>
+                      <Library className="h-4 w-4 mr-2" />
+                      Depuis la bibliothèque...
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <DndContext
                 sensors={sensors}
@@ -644,10 +737,28 @@ export default function StudyDetailPage() {
                       />
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      <Button size="sm" onClick={addQuestion}>
-                        <Plus className="h-3 w-3 mr-1" />
-                        Question
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button size="sm">
+                              <Plus className="h-3 w-3 mr-1" />
+                              Question
+                              <ChevronDown className="h-3 w-3 ml-1" />
+                            </Button>
+                          }
+                        />
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={addQuestion}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Question vierge
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => { setQuestionLibraryOpen(true); setSelectedLibQuestions(new Set()); }}>
+                            <Library className="h-4 w-4 mr-2" />
+                            Depuis la bibliothèque...
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <Button
                         size="sm"
                         variant="destructive"
@@ -1030,6 +1141,203 @@ export default function StudyDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Module Library Dialog */}
+      <Dialog open={moduleLibraryOpen} onOpenChange={setModuleLibraryOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Bibliothèque de modules</DialogTitle>
+            <DialogDescription>
+              Ajoutez un module préfait à votre protocole. Les questions incluses seront copiées.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher un module..."
+                value={libModuleSearch}
+                onChange={(e) => setLibModuleSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={() => setLibModuleCategory(null)}
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                  !libModuleCategory
+                    ? 'bg-indigo-100 text-indigo-700'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                Tous
+              </button>
+              {MODULE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setLibModuleCategory(libModuleCategory === cat ? null : cat)}
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    libModuleCategory === cat
+                      ? 'bg-indigo-100 text-indigo-700'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 overflow-auto space-y-2 pr-1">
+              {LIBRARY_MODULES
+                .filter((m) => {
+                  const matchSearch = !libModuleSearch ||
+                    m.name.toLowerCase().includes(libModuleSearch.toLowerCase()) ||
+                    m.description.toLowerCase().includes(libModuleSearch.toLowerCase());
+                  const matchCat = !libModuleCategory || m.category === libModuleCategory;
+                  return matchSearch && matchCat;
+                })
+                .map((mod) => (
+                  <button
+                    key={mod.id}
+                    onClick={() => addLibraryModule(mod)}
+                    className="w-full text-left rounded-lg border p-3 hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{mod.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                          {mod.description}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="shrink-0 text-[10px]">
+                        {SOURCE_LABELS[mod.source]}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                      <span>{mod.questions.length} question{mod.questions.length > 1 ? 's' : ''}</span>
+                      <span>·</span>
+                      <span>{mod.author}</span>
+                      <span>·</span>
+                      <span>{mod.downloads} utilisations</span>
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Question Library Dialog */}
+      <Dialog open={questionLibraryOpen} onOpenChange={(open) => { setQuestionLibraryOpen(open); if (!open) setSelectedLibQuestions(new Set()); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Bibliothèque de questions</DialogTitle>
+            <DialogDescription>
+              Sélectionnez une ou plusieurs questions à ajouter au module actuel.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher une question..."
+                value={libQuestionSearch}
+                onChange={(e) => setLibQuestionSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={() => setLibQuestionCategory(null)}
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                  !libQuestionCategory
+                    ? 'bg-indigo-100 text-indigo-700'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                Tous
+              </button>
+              {QUESTION_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setLibQuestionCategory(libQuestionCategory === cat ? null : cat)}
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    libQuestionCategory === cat
+                      ? 'bg-indigo-100 text-indigo-700'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 overflow-auto space-y-1.5 pr-1">
+              {LIBRARY_QUESTIONS
+                .filter((q) => {
+                  const matchSearch = !libQuestionSearch ||
+                    q.label.toLowerCase().includes(libQuestionSearch.toLowerCase()) ||
+                    q.category.toLowerCase().includes(libQuestionSearch.toLowerCase());
+                  const matchCat = !libQuestionCategory || q.category === libQuestionCategory;
+                  return matchSearch && matchCat;
+                })
+                .map((q) => {
+                  const isSelected = selectedLibQuestions.has(q.id);
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => {
+                        const next = new Set(selectedLibQuestions);
+                        if (isSelected) next.delete(q.id); else next.add(q.id);
+                        setSelectedLibQuestions(next);
+                      }}
+                      className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                        isSelected
+                          ? 'border-indigo-500 bg-indigo-50'
+                          : 'hover:border-indigo-300 hover:bg-indigo-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-5 w-5 items-center justify-center rounded border transition-colors ${
+                          isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-muted-foreground/30'
+                        }`}>
+                          {isSelected && <Check className="h-3 w-3 text-white" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="shrink-0">{questionTypeIcons[q.type]}</span>
+                            <p className="text-sm font-medium truncate">{q.label}</p>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                            <span>{QUESTION_TYPE_LABELS[q.type]}</span>
+                            <span>·</span>
+                            <span>{q.author}</span>
+                            <span>·</span>
+                            <span>{q.downloads} utilisations</span>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="shrink-0 text-[10px]">
+                          {SOURCE_LABELS[q.source]}
+                        </Badge>
+                      </div>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+          {selectedLibQuestions.size > 0 && (
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  const selected = LIBRARY_QUESTIONS.filter((q) => selectedLibQuestions.has(q.id));
+                  addLibraryQuestions(selected);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter ({selectedLibQuestions.size})
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
